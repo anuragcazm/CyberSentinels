@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberPredict Tactical Command // PS-26184 Intelligence Console</title>
+    <!-- Leaflet GIS & Tailwind CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #060911; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .leaflet-container { background-color: #060911 !important; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #080d1a; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="text-slate-200 h-screen flex flex-col overflow-hidden antialiased select-none">
+
+    <!-- Top Command Header -->
+    <header class="h-16 bg-[#0a0f1d] border-b border-slate-800/80 px-6 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <span class="h-3 w-3 rounded-full bg-cyan-400 animate-ping"></span>
+                <span class="text-xl font-bold tracking-tight text-white flex items-center">
+                    Cyber<span class="text-cyan-400">Predict</span>
+                </span>
+            </div>
+            <div class="hidden md:flex items-center space-x-2 text-xs bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-md mono text-slate-400">
+                <span class="text-slate-500">PS-ID:</span>
+                <span class="text-cyan-400 font-semibold">26184</span>
+                <span class="text-slate-600">|</span>
+                <span>I4C & NCRP PROACTIVE INTELLIGENCE ENGINE</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3 text-xs">
+            <button onclick="openReportModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-md shadow-lg shadow-cyan-950/40 transition flex items-center space-x-1.5 mono">
+                <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span>REPORT CYBER FRAUD (1930)</span>
+            </button>
+            <div class="hidden sm:flex items-center space-x-2 bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-full mono">
+                <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="backend-status-badge">STANDALONE GIS ENGINE: ACTIVE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Tactical Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Left GIS Map Area -->
+        <main class="flex-1 relative bg-slate-950">
+            <div id="map" class="w-full h-full"></div>
+
+            <!-- Floating Filter Pill -->
+            <div class="absolute top-4 left-4 z-[1000] bg-[#0a0f1d]/90 backdrop-blur-md border border-slate-800 p-1.5 rounded-lg flex items-center space-x-2 shadow-2xl">
+                <button onclick="filterRisk('all', this)" class="filter-btn text-xs font-semibold px-3 py-1.5 rounded bg-cyan-500 text-slate-950 transition">All Clusters</button>
+                <button onclick="filterRisk('CRITICAL', this)" class="filter-btn text-xs font-semibold px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-red-400 border border-red-500/30 transition">Critical Risk (&gt;85)</button>
+                <button onclick="filterRisk('HIGH', this)" class="filter-btn text-xs font-semibold px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 transition">High Risk (70-85)</button>
+            </div>
+
+            <!-- Floating Legend -->
+            <div class="absolute bottom-6 left-6 z-[1000] bg-[#0a0f1d]/90 backdrop-blur-md border border-slate-800 p-3.5 rounded-lg text-xs space-y-2 shadow-2xl">
+                <div class="font-bold text-slate-400 uppercase tracking-wider text-[10px] mono">Threat Probability Legend</div>
+                <div class="flex items-center space-x-2">
+                    <span class="h-3 w-3 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></span>
+                    <span class="text-slate-300">Critical Cash-Out Probability (&gt;85%)</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="h-3 w-3 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]"></span>
+                    <span class="text-slate-300">Elevated Cash-Out Risk (70-85%)</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Tactical Intelligence Sidebar -->
+        <aside class="w-[500px] bg-[#080d18] border-l border-slate-800 flex flex-col shrink-0 z-10">
+
+            <!-- Executive Metrics HUD -->
+            <div class="p-4 bg-[#0a0f1d] border-b border-slate-800 grid grid-cols-3 gap-2">
+                <div class="bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg text-center">
+                    <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mono">24h Complaints</div>
+                    <div class="text-lg font-bold text-cyan-400 mono mt-0.5" id="total-complaints-hud">8,143</div>
+                    <div class="text-[9px] text-slate-500">Live Ingestion</div>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg text-center">
+                    <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mono">Active Clusters</div>
+                    <div class="text-lg font-bold text-red-400 mono mt-0.5" id="active-clusters-hud">6 Hotspots</div>
+                    <div class="text-[9px] text-red-400/80">Assigned to LEA</div>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg text-center">
+                    <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mono">Avg Lead Time</div>
+                    <div class="text-lg font-bold text-amber-400 mono mt-0.5">22 mins</div>
+                    <div class="text-[9px] text-emerald-400">Intervention Window</div>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 border-b border-slate-800/80 flex justify-between items-center bg-[#070b14]">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mono flex items-center space-x-2">
+                    <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                    <span>Predicted Cash-Out Off-Ramps</span>
+                </span>
+                <span class="text-[11px] mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800" id="card-counter">Loading...</span>
+            </div>
+
+            <div id="alerts-container" class="flex-1 overflow-y-auto divide-y divide-slate-800/60 p-3 space-y-3"></div>
+
+            <!-- Selected Target Details & LEA Dispatch Panel -->
+            <div class="p-4 bg-[#0a0f1d] border-t border-slate-800 space-y-3">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 mono">Selected Target:</span>
+                    <span id="selected-cluster-name" class="text-cyan-400 font-bold">Laxmi Nagar Metro ATM Hub</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="dispatchPoliceAlert()" class="w-full py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs rounded-md shadow-lg shadow-red-950/60 transition flex items-center justify-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>NOTIFY POLICE PATROL</span>
+                    </button>
+                    <button onclick="dispatchBankAlert()" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-md shadow-lg shadow-blue-950/60 transition flex items-center justify-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                        <span>NOTIFY BANK NODAL</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- MODAL -->
+    <div id="report-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-[#0e1626] border border-slate-700 rounded-xl max-w-lg w-full p-6 shadow-2xl relative space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                        <span class="h-2.5 w-2.5 rounded-full bg-cyan-400"></span>
+                        <span>File Instant Cyber Fraud (1930 / NCRP Portal)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">ML model predicts cash-out risk and auto-assigns the nearest Cyber Police Station.</p>
+                </div>
+                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+
+            <form id="fraud-report-form" onsubmit="handleFormSubmit(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Victim Name / Identifier</label>
+                    <input type="text" id="victim-name" required placeholder="e.g. Ramesh Kumar" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400 mono">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Fraud Category</label>
+                        <select id="fraud-category" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400">
+                            <option>UPI / QR Code Scam</option>
+                            <option>Part-Time Job / Task Fraud</option>
+                            <option>Investment / Ponzi Fraud</option>
+                            <option>Loan App Extortion</option>
+                            <option>Impersonation / Vishing</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Defrauded Amount (INR)</label>
+                        <input type="number" id="fraud-amount" required placeholder="e.g. 150000" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400 mono">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Estimated Off-Ramp Region</label>
+                        <select id="target-region" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400">
+                            <option value="east">East Delhi (Laxmi Nagar / Shakarpur)</option>
+                            <option value="central">Central Delhi (Connaught Place)</option>
+                            <option value="noida">Noida (Sector 18 / Atta Market)</option>
+                            <option value="northwest">North-West Delhi (Rohini)</option>
+                            <option value="west">West Delhi (Janakpuri)</option>
+                            <option value="gurugram">Gurugram (Cyber City)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Mule Hops (Account Layers)</label>
+                        <select id="mule-hops" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400 mono">
+                            <option value="1">1 Hop (Direct Withdrawal)</option>
+                            <option value="2" selected>2 Hops (Intermediary Mule)</option>
+                            <option value="3">3+ Hops (Layered Syndicate)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Mule Bank Account / UPI VPA / Transaction UTR</label>
+                    <input type="text" id="mule-account" required placeholder="e.g. UTR: 423910283921 / mule@ybl" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-slate-100 focus:outline-none focus:border-cyan-400 mono">
+                </div>
+
+                <div class="bg-cyan-950/30 border border-cyan-500/30 p-2.5 rounded text-[11px] text-cyan-300">
+                    ⚡ ML model computes spatiotemporal risk score and dispatches auto-assigned case file to local Cyber Police Station.
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+                    <button type="button" onclick="closeReportModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded shadow-lg shadow-cyan-950/40">SUBMIT & AUTO-ASSIGN LEA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        const API_BASE_URL = "http://127.0.0.1:8000";
+
+        const map = L.map('map', { zoomControl: false }).setView([28.6250, 77.2150], 11);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 18
+        }).addTo(map);
+
+        const hotspots = [
+            {
+                id: "NCRP-2026-901",
+                name: "Laxmi Nagar Metro ATM & CSP Hub",
+                subtext: "East Delhi • Vikas Marg / Shakarpur",
+                lat: 28.6304,
+                lng: 77.2773,
+                score: 93.4,
+                level: "CRITICAL",
+                amount: "₹4,80,000",
+                lead_time: "12 min",
+                category: "UPI / QR Code Fraud",
+                past_30d_incidents: 48,
+                past_90d_incidents: 134,
+                assigned_station: "East Delhi Cyber Police Station",
+                assigned_officer: "Inspector Vikramaditya Sharma (SHO)",
+                emergency_phone: "+91 11 2244 5566 / 98711-CYBER",
+                bank_nodal: "SBI Vikas Marg & HDFC Laxmi Nagar Desk",
+                bank_phone: "+91 98112-BANKN",
+                shap_factors: ["Velocity Spike in Shakarpur", "Frequent Mule Off-Ramp", "Off-hours Withdrawal Pattern"]
+            },
+            {
+                id: "NCRP-2026-902",
+                name: "Connaught Place Financial Circle ATMs",
+                subtext: "Central Delhi • Scindia House Nodes",
+                lat: 28.6315,
+                lng: 77.2167,
+                score: 89.2,
+                level: "CRITICAL",
+                amount: "₹6,20,000",
+                lead_time: "18 min",
+                category: "Part-Time Task Scam",
+                past_30d_incidents: 39,
+                past_90d_incidents: 112,
+                assigned_station: "New Delhi District Cyber Cell",
+                assigned_officer: "ACP Rajesh Verma / Insp. Anita Roy",
+                emergency_phone: "+91 11 2374 8899 / 99100-CYBER",
+                bank_nodal: "PNB Sansad Marg & Axis Bank Hub",
+                bank_phone: "+91 98730-PNBNL",
+                shap_factors: ["Syndicate Account Mule Chain", "High-value cardless transaction alert"]
+            },
+            {
+                id: "NCRP-2026-903",
+                name: "Noida Sector 18 Commercial Bank Center",
+                subtext: "Gautam Buddha Nagar • Atta Market",
+                lat: 28.5708,
+                lng: 77.3260,
+                score: 81.5,
+                level: "HIGH",
+                amount: "₹3,40,000",
+                lead_time: "32 min",
+                category: "Investment / Ponzi Fraud",
+                past_30d_incidents: 31,
+                past_90d_incidents: 89,
+                assigned_station: "Noida Cyber Police Station (Sector 108)",
+                assigned_officer: "DSP Sunil Kumar (Cyber Cell Noida)",
+                emergency_phone: "+91 120 256 7890 / 94544-CYBER",
+                bank_nodal: "ICICI Sec-18 & Bank of Baroda Hub",
+                bank_phone: "+91 98991-ICICIN",
+                shap_factors: ["High fraud value concentration", "Rapid AePS disbursement link"]
+            },
+            {
+                id: "NCRP-2026-904",
+                name: "Rohini Sector 10 District Centre",
+                subtext: "North West Delhi • Swarn Jayanti Perimeter",
+                lat: 28.7159,
+                lng: 77.1147,
+                score: 77.8,
+                level: "HIGH",
+                amount: "₹2,10,000",
+                lead_time: "40 min",
+                category: "Loan App Extortion",
+                past_30d_incidents: 24,
+                past_90d_incidents: 67,
+                assigned_station: "North-West District Cyber Cell, Rohini",
+                assigned_officer: "Inspector Devendra Hooda",
+                emergency_phone: "+91 11 2705 4433 / 98101-NWDP",
+                bank_nodal: "Canara Bank Rohini Sec-10",
+                bank_phone: "+91 98188-NODAL",
+                shap_factors: ["Geographic proximity to mule account", "Multi-ATM distribution attempt"]
+            },
+            {
+                id: "NCRP-2026-905",
+                name: "Janakpuri District Commercial Complex",
+                subtext: "West Delhi • Major Commercial ATM Hub",
+                lat: 28.6219,
+                lng: 77.0878,
+                score: 74.0,
+                level: "HIGH",
+                amount: "₹1,90,000",
+                lead_time: "48 min",
+                category: "Impersonation / Vishing",
+                past_30d_incidents: 20,
+                past_90d_incidents: 58,
+                assigned_station: "West District Cyber Police Station",
+                assigned_officer: "Inspector Kuldeep Rawat",
+                emergency_phone: "+91 11 2550 3322 / 98733-WESTCYBER",
+                bank_nodal: "HDFC District Center Janakpuri",
+                bank_phone: "+91 98115-HDFCN",
+                shap_factors: ["Single-hop rapid transfer alert"]
+            },
+            {
+                id: "NCRP-2026-906",
+                name: "Gurugram Cyber City Commercial Outlets",
+                subtext: "Haryana • DLF Phase 2 Corridor",
+                lat: 28.4952,
+                lng: 77.0895,
+                score: 69.5,
+                level: "HIGH",
+                amount: "₹2,75,000",
+                lead_time: "55 min",
+                category: "Investment Scheme",
+                past_30d_incidents: 18,
+                past_90d_incidents: 52,
+                assigned_station: "Cyber Crime Police Station East Gurugram",
+                assigned_officer: "ACP Priyanshu Dewan / Insp. Jasvir Singh",
+                emergency_phone: "+91 124 221 1100 / 99999-HRYCYBER",
+                bank_nodal: "Kotak Mahindra Cyber City Hub",
+                bank_phone: "+91 98109-CYBERBANK",
+                shap_factors: ["Cluster density threshold breach"]
+            }
+        ];
+
+        let currentFilter = 'all';
+        const markers = [];
+        let selectedAlert = hotspots[0];
+
+        function renderDashboard() {
+            markers.forEach(m => map.removeLayer(m));
+            markers.length = 0;
+
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+
+            const filtered = hotspots.filter(h => currentFilter === 'all' || h.level === currentFilter);
+            document.getElementById('card-counter').textContent = `${filtered.length} Loaded`;
+            document.getElementById('active-clusters-hud').textContent = `${hotspots.length} Hotspots`;
+
+            filtered.forEach(item => {
+                const isCritical = item.level === 'CRITICAL';
+                const colorHex = isCritical ? '#ef4444' : '#f59e0b';
+                const bgBorder = isCritical ? 'border-red-500/40 bg-red-950/20' : 'border-amber-500/40 bg-amber-950/20';
+                const badgeColor = isCritical ? 'text-red-400 bg-red-900/40 border-red-500/50' : 'text-amber-400 bg-amber-900/40 border-amber-500/50';
+
+                const marker = L.circleMarker([item.lat, item.lng], {
+                    radius: isCritical ? 11 : 9,
+                    color: colorHex,
+                    fillColor: colorHex,
+                    fillOpacity: 0.85,
+                    weight: 2
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 250px; color: #0f172a; padding: 4px;">
+                        <div style="font-size: 10px; font-weight: 700; color: ${colorHex};">● ${item.level} RISK OFF-RAMP</div>
+                        <div style="font-size: 13px; font-weight: 700; margin: 2px 0;">${item.name}</div>
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">${item.subtext}</div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; border-radius: 6px; font-size: 11px; margin-bottom: 6px;">
+                            <b>Est. Amount:</b> ${item.amount} | <b>Lead:</b> <span style="color:${colorHex}; font-weight:bold;">${item.lead_time}</span><br/>
+                            <b>Past Incidents:</b> ${item.past_30d_incidents} in 30d (${item.past_90d_incidents} in 90d)
+                        </div>
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 8px; border-radius: 6px; font-size: 11px;">
+                            <b>Assigned Police:</b> ${item.assigned_station}<br/>
+                            <b>Officer:</b> ${item.assigned_officer} (${item.emergency_phone})
+                        </div>
+                    </div>
+                `);
+                markers.push(marker);
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-lg border ${bgBorder} hover:border-cyan-500/60 transition cursor-pointer space-y-2.5 bg-[#0b1120]/90`;
+                card.onclick = () => {
+                    selectedAlert = item;
+                    document.getElementById('selected-cluster-name').textContent = item.name;
+                    map.flyTo([item.lat, item.lng], 14, { duration: 1.2 });
+                    marker.openPopup();
+                };
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] mono text-slate-400 font-semibold">${item.id}</span>
+                        <span class="text-[10px] mono font-bold px-2 py-0.5 rounded border ${badgeColor}">
+                            RISK ${item.score}/100
+                        </span>
+                    </div>
+
+                    <div>
+                        <div class="font-bold text-slate-100 text-xs">${item.name}</div>
+                        <div class="text-[10px] text-slate-400">${item.subtext}</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-800/80 text-[11px] mono">
+                        <div><span class="text-slate-500 text-[10px]">POTENTIAL CASH-OUT:</span><div class="text-slate-200 font-bold">${item.amount}</div></div>
+                        <div><span class="text-slate-500 text-[10px]">EST. LEAD TIME:</span><div class="text-cyan-400 font-bold">${item.lead_time}</div></div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-slate-800 p-2 rounded text-[10px] space-y-1">
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span>Historical Area Incidents:</span>
+                            <span class="text-amber-400 font-bold mono">${item.past_30d_incidents} (30d) / ${item.past_90d_incidents} (90d)</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/80 border border-slate-800/80 p-2 rounded text-[10px] space-y-0.5">
+                        <div class="text-slate-400 font-semibold flex items-center space-x-1">
+                            <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                            <span>Assigned Police: ${item.assigned_station}</span>
+                        </div>
+                        <div class="text-slate-400 text-[9px] mono pl-2.5">
+                            Officer: <span class="text-slate-200">${item.assigned_officer}</span>
+                        </div>
+                        <div class="text-slate-500 text-[9px] mono pl-2.5">
+                            Hotline: <span class="text-cyan-300">${item.emergency_phone}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-1 flex flex-wrap gap-1">
+                        ${(item.shap_factors || []).map(f => `<span class="text-[9px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">${f}</span>`).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterRisk(level, el) {
+            currentFilter = level;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-cyan-500', 'text-slate-950');
+                btn.classList.add('bg-slate-900', 'text-slate-300');
+            });
+            el.classList.add('bg-cyan-500', 'text-slate-950');
+            el.classList.remove('bg-slate-900', 'text-slate-300');
+            renderDashboard();
+        }
+
+        function dispatchPoliceAlert() {
+            if (!selectedAlert) return;
+            alert(`🚨 PRIORITY CYBER POLICE DISPATCH GENERATED\n\n` +
+                  `Target Off-Ramp: ${selectedAlert.name}\n` +
+                  `Predicted Risk Score: ${selectedAlert.score}/100\n` +
+                  `Assigned Police Station: ${selectedAlert.assigned_station}\n` +
+                  `Designated Officer: ${selectedAlert.assigned_officer}\n` +
+                  `Emergency Contact: ${selectedAlert.emergency_phone}\n\n` +
+                  `Action: Field patrolling unit and CCTV surveillance notified.`);
+        }
+
+        function dispatchBankAlert() {
+            if (!selectedAlert) return;
+            alert(`🏦 BANK NODAL DESK ALERT DISPATCHED\n\n` +
+                  `Target ATM Cluster: ${selectedAlert.name}\n` +
+                  `Nodal Bank Branch: ${selectedAlert.bank_nodal}\n` +
+                  `Nodal Helpline: ${selectedAlert.bank_phone}\n` +
+                  `Est. Fraud Value: ${selectedAlert.amount}\n\n` +
+                  `Action: Step-up authentication on cardless ATM cash-outs and temporary micro-ATM withdrawal velocity caps applied.`);
+        }
+
+        function openReportModal() {
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const victim = document.getElementById('victim-name').value;
+            const category = document.getElementById('fraud-category').value;
+            const amount = parseFloat(document.getElementById('fraud-amount').value);
+            const region = document.getElementById('target-region').value;
+            const muleHops = parseInt(document.getElementById('mule-hops').value);
+            const muleAcc = document.getElementById('mule-account').value;
+
+            const regionMap = {
+                east: { name: "Laxmi Nagar / Shakarpur Hub", lat: 28.6304, lng: 77.2773, station: "East Delhi Cyber Police Station", officer: "Inspector Vikramaditya Sharma", phone: "+91 11 2244 5566" },
+                central: { name: "Connaught Place Financial Circle", lat: 28.6315, lng: 77.2167, station: "New Delhi District Cyber Cell", officer: "ACP Rajesh Verma", phone: "+91 11 2374 8899" },
+                noida: { name: "Noida Sector 18 Commercial Hub", lat: 28.5708, lng: 77.3260, station: "Noida Cyber Police Station (Sec 108)", officer: "DSP Sunil Kumar", phone: "+91 120 256 7890" },
+                northwest: { name: "Rohini Sector 10 District Hub", lat: 28.7159, lng: 77.1147, station: "North-West District Cyber Cell", officer: "Inspector Devendra Hooda", phone: "+91 11 2705 4433" },
+                west: { name: "Janakpuri District Commercial Center", lat: 28.6219, lng: 77.0878, station: "West District Cyber Police Station", officer: "Inspector Kuldeep Rawat", phone: "+91 11 2550 3322" },
+                gurugram: { name: "Gurugram Cyber City Commercial Outlets", lat: 28.4952, lng: 77.0895, station: "Cyber Crime Police Station East Gurugram", officer: "ACP Priyanshu Dewan", phone: "+91 124 221 1100" }
+            };
+
+            const sel = regionMap[region];
+            const complaintId = `NCRP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+            const score = Math.min(96.5, Math.round((amount / 10000) * 0.4 + (4 - muleHops) * 15 + 35));
+            const leadTime = Math.max(10, Math.round(50 - (score * 0.4)));
+
+            const newCase = {
+                id: complaintId,
+                name: `${sel.name} (LIVE ALERT)`,
+                subtext: `Victim: ${victim} • Account: ${muleAcc}`,
+                lat: sel.lat + (Math.random() - 0.5) * 0.006,
+                lng: sel.lng + (Math.random() - 0.5) * 0.006,
+                score: score,
+                level: score >= 85 ? "CRITICAL" : "HIGH",
+                amount: `₹${amount.toLocaleString('en-IN')}`,
+                lead_time: `${leadTime} min`,
+                category: category,
+                past_30d_incidents: 45,
+                past_90d_incidents: 120,
+                assigned_station: sel.station,
+                assigned_officer: sel.officer,
+                emergency_phone: sel.phone,
+                bank_nodal: "Regional Nodal Bank Desk",
+                bank_phone: "+91 1800-CYBER-BANK",
+                shap_factors: ["Incoming 1930 Live Telemetry", "Fast Dissipation Pattern", "Auto-Assigned LEA"]
+            };
+
+            hotspots.unshift(newCase);
+            closeReportModal();
+            renderDashboard();
+            map.flyTo([newCase.lat, newCase.lng], 14, { duration: 1.5 });
+
+            alert(`✅ COMPLAINT INGESTED & AUTO-ASSIGNED!\n\n` +
+                  `Complaint ID: ${newCase.id}\n` +
+                  `Victim: ${victim}\n` +
+                  `Amount: ${newCase.amount}\n` +
+                  `Target Off-Ramp: ${newCase.name}\n` +
+                  `AI Risk Score: ${newCase.score}/100 (Lead: ${newCase.lead_time})\n\n` +
+                  `Assigned Police: ${newCase.assigned_station}\n` +
+                  `Officer: ${newCase.assigned_officer} (${newCase.emergency_phone})`);
+        }
+
+        renderDashboard();
+    </script>
+</body>
+</html>
